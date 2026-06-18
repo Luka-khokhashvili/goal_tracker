@@ -67,5 +67,39 @@ check('avg/month = $750', averageMonthlyContribution(contribs), 75_000);
 check('months to goal @ $750', monthsToGoal(220_000, 75_000), 3);
 check('ETA from 2026-06', estimatedCompletionMonth(220_000, 75_000, '2026-06'), '2026-09');
 
+// --- Phase 6: reducer + persistence round-trip (uses in-memory store in Node) ---
+import { reducer } from '@/app/store/reducer';
+import { EMPTY_STATE } from '@/types';
+import { repository } from '@/services/repository';
+
+const g = {
+  id: 'g1', name: 'R3 fund', motorcycleModel: 'Yamaha R3', price: 350_000,
+  registrationFees: 0, insuranceEstimate: 0, additionalFees: 0, notes: '',
+  status: 'active' as const, createdAt: 'x', updatedAt: 'x',
+};
+let s = reducer(EMPTY_STATE, { type: 'ADD_GOAL', goal: g });
+check('add goal -> active set', s.settings.activeGoalId, 'g1');
+s = reducer(s, {
+  type: 'ADD_CONTRIBUTION',
+  contribution: { id: 'k1', goalId: 'g1', amount: 60_000, date: 'x', createdAt: 'x' },
+});
+check('contribution added', s.contributions.length, 1);
+s = reducer(s, { type: 'UPDATE_TARGET_RULE', rule: { ...s.targetRule, boostAmount: 95_000 } });
+check('rule updated (GEL)', s.targetRule.boostAmount, 95_000);
+s = reducer(s, { type: 'DELETE_GOAL', id: 'g1' });
+check('delete goal cascades contributions', s.contributions.length, 0);
+check('delete goal clears active', s.settings.activeGoalId, null);
+
+// Valid uuid + ISO timestamps so it survives load-time Zod validation.
+const validGoal = {
+  ...g,
+  id: crypto.randomUUID(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+await repository.save(reducer(EMPTY_STATE, { type: 'ADD_GOAL', goal: validGoal }));
+const reloaded = await repository.load();
+check('persistence round-trip', reloaded.goals[0]?.name, 'R3 fund');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

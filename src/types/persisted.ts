@@ -3,7 +3,15 @@ import { CURRENT_SCHEMA_VERSION } from '@/constants/schema';
 import { GoalSchema } from '@/features/goals/schema';
 import { ContributionSchema } from '@/features/contributions/schema';
 import { ScenarioSchema } from '@/features/scenarios/schema';
-import { MonthlyTargetSchema } from '@/features/targets/schema';
+import {
+  MonthlyTargetSchema,
+  TargetRuleSchema,
+  DEFAULT_TARGET_RULE,
+} from '@/features/targets/schema';
+import {
+  ExchangeRatesSchema,
+  DEFAULT_EXCHANGE_RATES,
+} from '@/features/exchange/schema';
 import { AppSettingsSchema, DEFAULT_SETTINGS } from '@/features/settings/schema';
 
 /**
@@ -20,6 +28,8 @@ export const PersistedStateSchema = z.object({
   contributions: z.array(ContributionSchema).default([]),
   scenarios: z.array(ScenarioSchema).default([]),
   monthlyTargets: z.array(MonthlyTargetSchema).default([]),
+  targetRule: TargetRuleSchema.default(DEFAULT_TARGET_RULE),
+  exchangeRates: ExchangeRatesSchema.default(DEFAULT_EXCHANGE_RATES),
   settings: AppSettingsSchema.default(DEFAULT_SETTINGS),
 });
 
@@ -32,5 +42,7 @@ export const EMPTY_STATE: PersistedState = {
   contributions: [],
   scenarios: [],
   monthlyTargets: [],
+  targetRule: DEFAULT_TARGET_RULE,
+  exchangeRates: DEFAULT_EXCHANGE_RATES,
   settings: DEFAULT_SETTINGS,
 };

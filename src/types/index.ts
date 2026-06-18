@@ -21,12 +21,24 @@ export type {
   MonthlyTarget,
   MonthlyTargetDraft,
   MonthKey,
+  TargetRule,
+  TargetRuleDraft,
 } from '@/features/targets/schema';
 export {
   MonthlyTargetSchema,
   MonthlyTargetDraftSchema,
   MonthKeySchema,
+  TargetRuleSchema,
+  TargetRuleDraftSchema,
+  DEFAULT_TARGET_RULE,
 } from '@/features/targets/schema';
+
+export type { ExchangeRates, ExchangeRatesDraft } from '@/features/exchange/schema';
+export {
+  ExchangeRatesSchema,
+  ExchangeRatesDraftSchema,
+  DEFAULT_EXCHANGE_RATES,
+} from '@/features/exchange/schema';
 
 export type { Scenario, ScenarioDraft } from '@/features/scenarios/schema';
 export { ScenarioSchema, ScenarioDraftSchema } from '@/features/scenarios/schema';
@@ -35,4 +47,10 @@ export type { AppSettings, Theme } from '@/features/settings/schema';
 export { AppSettingsSchema, DEFAULT_SETTINGS } from '@/features/settings/schema';
 
 export type { Currency } from '@/constants/currency';
-export { CurrencySchema, CURRENCIES, DEFAULT_CURRENCY } from '@/constants/currency';
+export {
+  CurrencySchema,
+  CURRENCIES,
+  DEFAULT_CURRENCY,
+  BASE_CURRENCY,
+  TARGET_CURRENCY,
+} from '@/constants/currency';

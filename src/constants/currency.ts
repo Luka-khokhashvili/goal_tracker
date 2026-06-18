@@ -15,6 +15,22 @@ export type Currency = z.infer<typeof CurrencySchema>;
 
 export const DEFAULT_CURRENCY: Currency = 'USD';
 
+/**
+ * The currency every stored `Money` value is denominated in. Fixed at USD so
+ * conversions are always one well-defined hop (USD <-> GEL via saved rates).
+ * Changing this would require re-converting all stored data, so it's a constant,
+ * not a setting.
+ */
+export const BASE_CURRENCY: Currency = 'USD';
+
+/**
+ * Monthly savings targets (the rule's $$ and any per-month override) are
+ * denominated in GEL — they reflect the user's real-life salary/reserve pay,
+ * which is in lari. They are entered and edited ONLY in GEL; the USD figure is
+ * a derived, read-only view obtained via the saved exchange rate.
+ */
+export const TARGET_CURRENCY: Currency = 'GEL';
+
 export function currencyMeta(code: Currency) {
   return CURRENCIES[code];
 }

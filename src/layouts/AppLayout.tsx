@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Bike } from 'lucide-react';
 import { useSettings } from '@/features/settings/useSettings';
-import { CurrencyToggle, ThemeToggle } from '@/features/settings/SettingsControls';
+import { ThemeToggle } from '@/features/settings/SettingsControls';
 
 /** App frame: applies the theme class to <html> and renders the header. */
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -29,7 +29,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <CurrencyToggle />
             <ThemeToggle />
           </div>
         </div>

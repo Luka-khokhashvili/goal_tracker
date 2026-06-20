@@ -14,7 +14,7 @@ export function ContributionList({
   onEdit: (c: Contribution) => void;
   onDelete: (id: string) => void;
 }) {
-  const { formatFrom } = useMoney();
+  const { formatRaw } = useMoney();
 
   if (contributions.length === 0) {
     return (
@@ -30,7 +30,7 @@ export function ContributionList({
         <li key={c.id} className="flex items-center justify-between gap-3 py-3">
           <div>
             <p className="font-medium text-content">
-              {formatFrom(c.amount, CONTRIBUTION_CURRENCY)}
+              {formatRaw(c.amount, CONTRIBUTION_CURRENCY)}
             </p>
             <p className="text-xs text-muted">
               {formatDate(c.date)}

@@ -2,7 +2,7 @@ import type { Goal } from '@/features/goals/schema';
 import type { Contribution } from '@/features/contributions/schema';
 import type { MonthlyTarget, TargetRule } from '@/features/targets/schema';
 import type { ExchangeRates } from '@/features/exchange/schema';
-import { BASE_CURRENCY, TARGET_CURRENCY, type Currency } from '@/constants/currency';
+import { CONTRIBUTION_CURRENCY, type Currency } from '@/constants/currency';
 import { convert, formatMoney } from '@/utils/money';
 import { currentMonthKey, formatMonthKey } from '@/utils/date';
 import { resolveMonthlyTarget } from './targets';
@@ -39,13 +39,15 @@ export interface InsightContext {
  */
 export function generateInsights(ctx: InsightContext): Insight[] {
   const { goal, contributions, rule, overrides, rates, displayCurrency } = ctx;
-  const fmtBase = (minor: number) =>
-    formatMoney(convert(minor, BASE_CURRENCY, displayCurrency, rates), displayCurrency);
+  // All headline figures (required, remaining, targets, contributions) are in
+  // GEL — format them into the display currency.
+  const fmtGel = (minor: number) =>
+    formatMoney(convert(minor, CONTRIBUTION_CURRENCY, displayCurrency, rates), displayCurrency);
 
   const insights: Insight[] = [];
-  const percent = Math.round(progressPercent(goal, contributions));
-  const remaining = remainingAmount(goal, contributions);
-  const avg = averageMonthlyContribution(contributions);
+  const percent = Math.round(progressPercent(goal, contributions, rates));
+  const remaining = remainingAmount(goal, contributions, rates); // GEL
+  const avg = averageMonthlyContribution(contributions); // GEL
 
   // 1. Headline progress.
   insights.push({
@@ -61,7 +63,7 @@ export function generateInsights(ctx: InsightContext): Insight[] {
   if (remaining > 0) {
     insights.push({
       id: 'remaining',
-      text: `You need ${fmtBase(remaining)} more to reach your goal.`,
+      text: `You need ${fmtGel(remaining)} more to reach your goal.`,
       tone: 'neutral',
     });
   }
@@ -73,7 +75,7 @@ export function generateInsights(ctx: InsightContext): Insight[] {
       insights.push({
         id: 'eta',
         text: month
-          ? `At your current pace (~${fmtBase(avg)}/mo), you'll reach your goal around ${formatMonthKey(month as never)}.`
+          ? `At your current pace (~${fmtGel(avg)}/mo), you'll reach your goal around ${formatMonthKey(month as never)}.`
           : `Add a monthly contribution to project a completion date.`,
         tone: 'positive',
       });
@@ -86,18 +88,17 @@ export function generateInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // 4. This month vs. target. Target is GEL-native -> convert to base to compare.
+  // 4. This month vs. target. Both target and contributions are GEL — compare directly.
   const monthKey = currentMonthKey(ctx.now);
   const targetGel = resolveMonthlyTarget(monthKey, rule, overrides);
-  const targetBase = convert(targetGel, TARGET_CURRENCY, BASE_CURRENCY, rates);
   const savedThisMonth = contributionsByMonth(contributions).get(monthKey) ?? 0;
   if (targetGel > 0) {
-    const hit = savedThisMonth >= targetBase;
+    const hit = savedThisMonth >= targetGel;
     insights.push({
       id: 'month-target',
       text: hit
-        ? `You've hit this month's ${fmtBase(targetBase)} savings target — nicely done.`
-        : `This month: ${fmtBase(savedThisMonth)} saved of a ${fmtBase(targetBase)} target.`,
+        ? `You've hit this month's ${fmtGel(targetGel)} savings target — nicely done.`
+        : `This month: ${fmtGel(savedThisMonth)} saved of a ${fmtGel(targetGel)} target.`,
       tone: hit ? 'positive' : 'warning',
     });
   }

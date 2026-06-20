@@ -25,5 +25,6 @@ export type Action =
   | { type: 'DELETE_MONTHLY_TARGET'; id: string }
   | { type: 'UPDATE_TARGET_RULE'; rule: TargetRule }
   | { type: 'UPDATE_EXCHANGE_RATES'; rates: ExchangeRates }
+  | { type: 'SET_USD_HOLDINGS'; amount: number }
   | { type: 'SET_DISPLAY_CURRENCY'; currency: Currency }
   | { type: 'SET_THEME'; theme: Theme };

@@ -20,7 +20,15 @@ import { TargetRuleForm } from "@/features/targets/TargetRuleForm";
 import { useExchange } from "@/features/exchange/useExchange";
 import { ExchangeRateForm } from "@/features/exchange/ExchangeRateForm";
 import { useMoney } from "@/hooks/useMoney";
-import { TARGET_CURRENCY } from "@/constants/currency";
+import { useGoalCharts } from "@/features/dashboard/useGoalCharts";
+import {
+  ForecastChart,
+  MonthlyContributionsChart,
+  SavingsProgressChart,
+} from "@/components/charts";
+import { useHoldings } from "@/features/holdings/useHoldings";
+import { HoldingsForm } from "@/features/holdings/HoldingsForm";
+import { CONTRIBUTION_CURRENCY, TARGET_CURRENCY } from "@/constants/currency";
 import {
   contributionsByMonth,
   progressPercent,
@@ -84,12 +92,15 @@ function ActiveDashboard() {
     updateContribution,
     deleteContribution,
   } = useContributions();
-  const { rule, updateRule, targetForMonth, targetSource } = useTargets();
+  const { rule, updateRule, targetForMonth } = useTargets();
   const { rates, updateRates } = useExchange();
-  const { format, formatFrom } = useMoney();
+  const { usdHoldings, setUsdHoldings } = useHoldings();
+  const { formatFrom, formatRaw } = useMoney();
+  const charts = useGoalCharts();
 
   const [editGoal, setEditGoal] = useState(false);
   const [editRule, setEditRule] = useState(false);
+  const [editHoldings, setEditHoldings] = useState(false);
   const [contribModal, setContribModal] = useState<{
     open: boolean;
     editing?: Contribution;
@@ -98,16 +109,15 @@ function ActiveDashboard() {
   });
 
   const goal = activeGoal!;
-  const required = totalRequired(goal);
-  const saved = totalSaved(contributions);
-  const remaining = remainingAmount(goal, contributions);
-  const percent = progressPercent(goal, contributions);
+  const required = totalRequired(goal, rates); // GEL (price USD->GEL + GEL fees)
+  const saved = totalSaved(contributions); // GEL (native)
+  const remaining = remainingAmount(goal, contributions, rates); // USD
+  const percent = progressPercent(goal, contributions, rates);
 
   const month = currentMonthKey();
-  const targetGel = targetForMonth(month);
-  const savedThisMonth = contributionsByMonth(contributions).get(month) ?? 0;
-  const goalReached = targetGel === savedThisMonth ? true : false;
-  const source = targetSource(month);
+  const targetGel = targetForMonth(month); // GEL
+  const savedThisMonth = contributionsByMonth(contributions).get(month) ?? 0; // GEL
+  const goalReached = savedThisMonth >= targetGel && targetGel > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,7 +138,8 @@ function ActiveDashboard() {
         />
         <div className="flex items-end justify-between">
           <p className="text-sm text-muted">
-            {format(saved)} of {format(required)}
+            {formatFrom(saved, CONTRIBUTION_CURRENCY)} of{" "}
+            {formatFrom(required, CONTRIBUTION_CURRENCY)}
           </p>
           <p className="text-sm font-semibold text-content">
             {Math.round(percent)}%
@@ -139,21 +150,81 @@ function ActiveDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Total required" value={format(required)} />
-        <Stat label="Saved so far" value={format(saved)} />
-        <Stat label="Remaining" value={format(remaining)} />
+        <Stat
+          label="Total required"
+          value={formatFrom(required, CONTRIBUTION_CURRENCY)}
+        />
+        <Stat
+          label="Saved so far"
+          value={formatFrom(saved, CONTRIBUTION_CURRENCY)}
+        />
+        <Stat
+          label="Remaining"
+          value={formatFrom(remaining, CONTRIBUTION_CURRENCY)}
+        />
         <Stat
           label={`This month (${formatMonthKey(month)})`}
           value={formatFrom(targetGel, TARGET_CURRENCY)}
           hint={
             <span className="flex items-center gap-1.5">
-              {format(savedThisMonth)} saved
+              {formatFrom(savedThisMonth, CONTRIBUTION_CURRENCY)} saved
               <Badge tone={goalReached ? "success" : "neutral"}>
                 {goalReached ? "Goal reached" : "In progress"}
               </Badge>
             </span>
           }
         />
+      </div>
+
+      {/* Held-in-USD box (manual, informational) */}
+      <Stat
+        className="sm:max-w-xs"
+        label="Held in USD"
+        value={formatRaw(usdHoldings, "USD")}
+        hint={
+          <button
+            className="text-brand hover:underline"
+            onClick={() => setEditHoldings(true)}
+          >
+            Edit how much you hold as dollars
+          </button>
+        }
+      />
+
+      {/* Charts */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader
+            title="Savings progress"
+            subtitle="Cumulative savings over time"
+          />
+          <SavingsProgressChart
+            data={charts.cumulative}
+            target={charts.targetValue}
+            symbol={charts.symbol}
+          />
+        </Card>
+        <Card>
+          <CardHeader
+            title="Monthly contributions"
+            subtitle="How much you saved each month"
+          />
+          <MonthlyContributionsChart
+            data={charts.monthly}
+            symbol={charts.symbol}
+          />
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader
+            title="Completion forecast"
+            subtitle="Projected from your average saving rate"
+          />
+          <ForecastChart
+            data={charts.forecast}
+            target={charts.targetValue}
+            symbol={charts.symbol}
+          />
+        </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -231,6 +302,21 @@ function ActiveDashboard() {
             setEditGoal(false);
           }}
           onCancel={() => setEditGoal(false)}
+        />
+      </Modal>
+
+      <Modal
+        open={editHoldings}
+        onClose={() => setEditHoldings(false)}
+        title="Held in USD"
+      >
+        <HoldingsForm
+          usdHoldings={usdHoldings}
+          onSubmit={(usd) => {
+            setUsdHoldings(usd);
+            setEditHoldings(false);
+          }}
+          onCancel={() => setEditHoldings(false)}
         />
       </Modal>
 

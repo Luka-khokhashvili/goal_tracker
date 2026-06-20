@@ -31,6 +31,18 @@ export const BASE_CURRENCY: Currency = "GEL";
  */
 export const TARGET_CURRENCY: Currency = "GEL";
 
+/**
+ * Each money type is stored in the currency it's naturally entered in, exactly
+ * as typed — no lossy round-trip conversion. We convert only for display/totals.
+ *   - Bike PRICE only: USD (the user shops for the bike in dollars).
+ *   - Goal FEES (registration, insurance, gear, license, preps): GEL.
+ *   - Contributions (monthly saved cash): GEL (the user's real income).
+ *   - Targets: GEL (see TARGET_CURRENCY).
+ */
+export const GOAL_CURRENCY: Currency = "USD"; // bike price only
+export const FEE_CURRENCY: Currency = "GEL"; // all goal fees/extras
+export const CONTRIBUTION_CURRENCY: Currency = "GEL";
+
 export function currencyMeta(code: Currency) {
   return CURRENCIES[code];
 }

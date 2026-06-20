@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '@/app/store/StoreContext';
 import type { Goal, GoalDraft } from './schema';
 
-/** Read + mutate goals. Drafts carry money in BASE_CURRENCY minor units (USD). */
+/** Read + mutate goals. Drafts carry money in GOAL_CURRENCY minor units (USD). */
 export function useGoals() {
   const { state, dispatch } = useStore();
 

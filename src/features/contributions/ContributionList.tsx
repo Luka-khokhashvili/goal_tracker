@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useMoney } from '@/hooks/useMoney';
+import { CONTRIBUTION_CURRENCY } from '@/constants/currency';
 import { formatDate } from '@/utils/date';
 import type { Contribution } from './schema';
 
@@ -13,7 +14,7 @@ export function ContributionList({
   onEdit: (c: Contribution) => void;
   onDelete: (id: string) => void;
 }) {
-  const { format } = useMoney();
+  const { formatFrom } = useMoney();
 
   if (contributions.length === 0) {
     return (
@@ -28,7 +29,9 @@ export function ContributionList({
       {contributions.map((c) => (
         <li key={c.id} className="flex items-center justify-between gap-3 py-3">
           <div>
-            <p className="font-medium text-content">{format(c.amount)}</p>
+            <p className="font-medium text-content">
+              {formatFrom(c.amount, CONTRIBUTION_CURRENCY)}
+            </p>
             <p className="text-xs text-muted">
               {formatDate(c.date)}
               {c.note ? ` · ${c.note}` : ''}

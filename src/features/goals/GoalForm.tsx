@@ -2,14 +2,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Field, Input, MoneyInput, Textarea } from '@/components/ui';
-import { CURRENCIES, BASE_CURRENCY } from '@/constants/currency';
-import { convert, toMajor, toMinor } from '@/utils/money';
-import { useMoney } from '@/hooks/useMoney';
+import { CURRENCIES, FEE_CURRENCY, GOAL_CURRENCY } from '@/constants/currency';
+import { toMajor, toMinor } from '@/utils/money';
 import type { Goal, GoalDraft } from './schema';
 
-// Form values are MAJOR units in the user's display currency. Converted to the
-// USD base draft on submit. All-required keeps RHF/Zod typing friction-free;
-// empty fee inputs coerce to 0.
+// The bike PRICE is entered in USD; all FEES (registration, insurance, gear,
+// license, preps) are entered in GEL. Each is stored exactly in its own
+// currency — no conversion, so values never drift. All-required keeps RHF/Zod
+// typing friction-free; empty inputs coerce to 0.
 const formSchema = z.object({
   name: z.string().min(1, 'Give the goal a name'),
   motorcycleModel: z.string(),
@@ -30,12 +30,12 @@ export function GoalForm({
   onSubmit: (draft: GoalDraft) => void;
   onCancel?: () => void;
 }) {
-  const { displayCurrency, rates } = useMoney();
-  const symbol = CURRENCIES[displayCurrency].symbol;
+  const usdSymbol = CURRENCIES[GOAL_CURRENCY].symbol; // $
+  const gelSymbol = CURRENCIES[FEE_CURRENCY].symbol; // ₾
 
-  // Stored money is USD base -> show it in the display currency for editing.
-  const fromBase = (baseMinor: number) =>
-    toMajor(convert(baseMinor, BASE_CURRENCY, displayCurrency, rates), displayCurrency);
+  // Stored exactly in each native currency -> show major units for editing.
+  const fromUsd = (usdMinor: number) => toMajor(usdMinor, GOAL_CURRENCY);
+  const fromGel = (gelMinor: number) => toMajor(gelMinor, FEE_CURRENCY);
 
   const {
     register,
@@ -47,10 +47,10 @@ export function GoalForm({
       ? {
           name: goal.name,
           motorcycleModel: goal.motorcycleModel,
-          price: fromBase(goal.price),
-          registrationFees: fromBase(goal.registrationFees),
-          insuranceEstimate: fromBase(goal.insuranceEstimate),
-          additionalFees: fromBase(goal.additionalFees),
+          price: fromUsd(goal.price),
+          registrationFees: fromGel(goal.registrationFees),
+          insuranceEstimate: fromGel(goal.insuranceEstimate),
+          additionalFees: fromGel(goal.additionalFees),
           notes: goal.notes,
         }
       : {
@@ -64,18 +64,18 @@ export function GoalForm({
         },
   });
 
-  // Display-currency major -> USD base minor.
-  const toBase = (major: number) =>
-    convert(toMinor(major, displayCurrency), displayCurrency, BASE_CURRENCY, rates);
+  // Major -> minor in each native currency (stored exactly).
+  const toUsd = (major: number) => toMinor(major, GOAL_CURRENCY);
+  const toGel = (major: number) => toMinor(major, FEE_CURRENCY);
 
   const submit = handleSubmit((v) => {
     onSubmit({
       name: v.name.trim(),
       motorcycleModel: v.motorcycleModel.trim(),
-      price: toBase(v.price),
-      registrationFees: toBase(v.registrationFees),
-      insuranceEstimate: toBase(v.insuranceEstimate),
-      additionalFees: toBase(v.additionalFees),
+      price: toUsd(v.price),
+      registrationFees: toGel(v.registrationFees),
+      insuranceEstimate: toGel(v.insuranceEstimate),
+      additionalFees: toGel(v.additionalFees),
       notes: v.notes.trim(),
     });
   });
@@ -91,17 +91,17 @@ export function GoalForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Price" error={errors.price?.message}>
-          <MoneyInput symbol={symbol} {...register('price')} />
+        <Field label="Bike price (USD)" error={errors.price?.message}>
+          <MoneyInput symbol={usdSymbol} {...register('price')} />
         </Field>
-        <Field label="Registration fees" error={errors.registrationFees?.message}>
-          <MoneyInput symbol={symbol} {...register('registrationFees')} />
+        <Field label="Registration fees (GEL)" error={errors.registrationFees?.message}>
+          <MoneyInput symbol={gelSymbol} {...register('registrationFees')} />
         </Field>
-        <Field label="Insurance estimate" error={errors.insuranceEstimate?.message}>
-          <MoneyInput symbol={symbol} {...register('insuranceEstimate')} />
+        <Field label="Insurance estimate (GEL)" error={errors.insuranceEstimate?.message}>
+          <MoneyInput symbol={gelSymbol} {...register('insuranceEstimate')} />
         </Field>
-        <Field label="Additional fees (gear, license…)" error={errors.additionalFees?.message}>
-          <MoneyInput symbol={symbol} {...register('additionalFees')} />
+        <Field label="Gear, license, preps (GEL)" error={errors.additionalFees?.message}>
+          <MoneyInput symbol={gelSymbol} {...register('additionalFees')} />
         </Field>
       </div>
 
@@ -110,8 +110,9 @@ export function GoalForm({
       </Field>
 
       <p className="text-xs text-muted">
-        Amounts are entered in {displayCurrency} and stored consistently — toggle the
-        currency anytime.
+        Only the <strong className="text-content">bike price</strong> is in USD. All
+        fees (registration, insurance, gear, license, preps) are in{' '}
+        <strong className="text-content">GEL</strong>. Each is stored exactly.
       </p>
 
       <div className="flex justify-end gap-2">

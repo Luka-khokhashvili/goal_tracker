@@ -1,50 +1,68 @@
 import type { Money } from '@/types/money';
 import type { Goal } from '@/features/goals/schema';
 import type { Contribution } from '@/features/contributions/schema';
+import type { ExchangeRates } from '@/features/exchange/schema';
+import { FEE_CURRENCY, GOAL_CURRENCY } from '@/constants/currency';
+import { convert } from '@/utils/money';
 import { addMonths, currentMonthKey, toMonthKey } from '@/utils/date';
 
 /**
- * Core goal math. Inputs and outputs are in BASE_CURRENCY minor units (USD
- * cents); these functions are currency-agnostic integers — display conversion
- * happens in the UI layer. No React, no I/O: trivially unit-testable.
+ * Core goal math. Native storage currencies:
+ *   - bike price:    GOAL_CURRENCY (USD)
+ *   - goal fees:     FEE_CURRENCY (GEL)
+ *   - contributions: CONTRIBUTION_CURRENCY (GEL)
+ * Since almost everything is GEL, we compute totals/remaining/progress in GEL
+ * (FEE_CURRENCY) — only the bike price is converted (USD -> GEL). No React,
+ * no I/O: trivially unit-testable.
  */
 
-/** Bike price + every fee that stands between you and riding away. */
-export function totalRequired(goal: Goal): Money {
-  return (
-    goal.price +
-    goal.registrationFees +
-    goal.insuranceEstimate +
-    goal.additionalFees
-  );
+/** Sum of the GEL-denominated fees (registration, insurance, gear/license/preps). */
+export function totalFees(goal: Goal): Money {
+  return goal.registrationFees + goal.insuranceEstimate + goal.additionalFees;
 }
 
-/** Everything contributed to this goal so far. */
+/** Total required in GEL: bike price (USD -> GEL) + GEL fees. */
+export function totalRequired(goal: Goal, rates: ExchangeRates): Money {
+  const priceGel = convert(goal.price, GOAL_CURRENCY, FEE_CURRENCY, rates);
+  return priceGel + totalFees(goal);
+}
+
+/** Everything contributed so far — in CONTRIBUTION_CURRENCY (GEL), exact. */
 export function totalSaved(contributions: Contribution[]): Money {
   return contributions.reduce((sum, c) => sum + c.amount, 0);
 }
 
-/** How much is still needed (never negative). */
-export function remainingAmount(goal: Goal, contributions: Contribution[]): Money {
-  return Math.max(0, totalRequired(goal) - totalSaved(contributions));
+/** How much is still needed, in GEL. Never negative. */
+export function remainingAmount(
+  goal: Goal,
+  contributions: Contribution[],
+  rates: ExchangeRates,
+): Money {
+  return Math.max(0, totalRequired(goal, rates) - totalSaved(contributions));
 }
 
-/** Progress as a 0..1 ratio, clamped (over-saving caps at 1). */
-export function progressRatio(goal: Goal, contributions: Contribution[]): number {
-  const required = totalRequired(goal);
+/** Progress as a 0..1 ratio (both sides in GEL), clamped. */
+export function progressRatio(
+  goal: Goal,
+  contributions: Contribution[],
+  rates: ExchangeRates,
+): number {
+  const required = totalRequired(goal, rates);
   if (required <= 0) return 0;
   return Math.min(1, totalSaved(contributions) / required);
 }
 
 /** Progress as a 0..100 percentage. */
-export function progressPercent(goal: Goal, contributions: Contribution[]): number {
-  return progressRatio(goal, contributions) * 100;
+export function progressPercent(
+  goal: Goal,
+  contributions: Contribution[],
+  rates: ExchangeRates,
+): number {
+  return progressRatio(goal, contributions, rates) * 100;
 }
 
-/** Sum of contributions grouped by their month, e.g. { "2026-06": 90000 }. */
-export function contributionsByMonth(
-  contributions: Contribution[],
-): Map<string, Money> {
+/** Sum of contributions grouped by month (GEL native), e.g. { "2026-06": 90000 }. */
+export function contributionsByMonth(contributions: Contribution[]): Map<string, Money> {
   const map = new Map<string, Money>();
   for (const c of contributions) {
     const key = toMonthKey(c.date);
@@ -54,7 +72,7 @@ export function contributionsByMonth(
 }
 
 /**
- * Average contribution per ACTIVE month (months that actually had a deposit).
+ * Average contribution per ACTIVE month (months with a deposit), in GEL.
  * Using active months — not calendar months elapsed — keeps the forecast from
  * being dragged down by months you intentionally skipped.
  */
@@ -66,9 +84,8 @@ export function averageMonthlyContribution(contributions: Contribution[]): Money
 }
 
 /**
- * Estimated calendar month (as a month key) the goal is reached, based on a
- * monthly saving rate. Returns null when the rate is 0 (would never finish) or
- * the goal is already met.
+ * Estimated completion month from a monthly saving rate. `remaining` and
+ * `monthlyRate` must be in the SAME currency. Null when the rate is 0.
  */
 export function estimatedCompletionMonth(
   remaining: Money,

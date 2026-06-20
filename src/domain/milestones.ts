@@ -1,13 +1,14 @@
 import type { Money } from '@/types/money';
 import type { Goal } from '@/features/goals/schema';
 import type { Contribution } from '@/features/contributions/schema';
+import type { ExchangeRates } from '@/features/exchange/schema';
 import { MILESTONE_THRESHOLDS } from '@/constants/milestones';
 import { progressPercent, totalRequired } from './calculations';
 
 export interface Milestone {
   /** 25 | 50 | 75 | 100 */
   percent: number;
-  /** Amount saved that crosses this milestone (USD minor units). */
+  /** Amount saved that crosses this milestone (GEL minor units). */
   amount: Money;
   /** Already reached at current progress? */
   reached: boolean;
@@ -17,17 +18,25 @@ export interface Milestone {
  * Generate the 25/50/75/100% milestones for a goal, each flagged reached or
  * upcoming based on current progress.
  */
-export function buildMilestones(goal: Goal, contributions: Contribution[]): Milestone[] {
-  const required = totalRequired(goal);
-  const progress = progressPercent(goal, contributions);
+export function buildMilestones(
+  goal: Goal,
+  contributions: Contribution[],
+  rates: ExchangeRates,
+): Milestone[] {
+  const required = totalRequired(goal, rates); // GEL
+  const progress = progressPercent(goal, contributions, rates);
   return MILESTONE_THRESHOLDS.map((percent) => ({
     percent,
-    amount: Math.round((required * percent) / 100),
+    amount: Math.round((required * percent) / 100), // GEL minor units
     reached: progress >= percent,
   }));
 }
 
 /** The next milestone not yet reached, or null when the goal is complete. */
-export function nextMilestone(goal: Goal, contributions: Contribution[]): Milestone | null {
-  return buildMilestones(goal, contributions).find((m) => !m.reached) ?? null;
+export function nextMilestone(
+  goal: Goal,
+  contributions: Contribution[],
+  rates: ExchangeRates,
+): Milestone | null {
+  return buildMilestones(goal, contributions, rates).find((m) => !m.reached) ?? null;
 }

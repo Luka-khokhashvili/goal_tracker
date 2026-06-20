@@ -13,6 +13,7 @@ import {
   DEFAULT_EXCHANGE_RATES,
 } from '@/features/exchange/schema';
 import { AppSettingsSchema, DEFAULT_SETTINGS } from '@/features/settings/schema';
+import { MoneySchema } from '@/types/money';
 
 /**
  * The entire app state, exactly as it lives in localStorage. Flat arrays with
@@ -30,6 +31,9 @@ export const PersistedStateSchema = z.object({
   monthlyTargets: z.array(MonthlyTargetSchema).default([]),
   targetRule: TargetRuleSchema.default(DEFAULT_TARGET_RULE),
   exchangeRates: ExchangeRatesSchema.default(DEFAULT_EXCHANGE_RATES),
+  // How much of the saved cash the user currently holds as physical USD.
+  // Manually entered, in USD minor units; informational (doesn't change totals).
+  usdHoldings: MoneySchema.default(0),
   settings: AppSettingsSchema.default(DEFAULT_SETTINGS),
 });
 
@@ -44,5 +48,6 @@ export const EMPTY_STATE: PersistedState = {
   monthlyTargets: [],
   targetRule: DEFAULT_TARGET_RULE,
   exchangeRates: DEFAULT_EXCHANGE_RATES,
+  usdHoldings: 0,
   settings: DEFAULT_SETTINGS,
 };

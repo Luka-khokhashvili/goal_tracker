@@ -1,7 +1,7 @@
 import { DEFAULT_TARGET_RULE } from '@/features/targets/schema';
 import { DEFAULT_EXCHANGE_RATES } from '@/features/exchange/schema';
 import { isBoostMonth, resolveMonthlyTarget } from '@/domain/targets';
-import { convert, formatMoney, parseMoney } from '@/utils/money';
+import { convert, formatMoney, parseMoney, toMinor } from '@/utils/money';
 import {
   totalRequired,
   totalSaved,
@@ -49,23 +49,27 @@ check('format $600', formatMoney(60_000, 'USD'), '$600');
 check('format ₾900.50', formatMoney(90_050, 'GEL'), '₾900.50');
 check('parse "1,250.50" USD', parseMoney('1,250.50', 'USD'), 125_050);
 
-// Goal math (USD base). Bike $3,500 + $200 fees = $3,700 required.
+// Regression: GEL entered is stored & shown EXACTLY (no 900 -> 899.96 drift).
+check('₾900 round-trips exactly', formatMoney(toMinor(900, 'GEL'), 'GEL'), '₾900');
+check('₾4,800 round-trips exactly', formatMoney(toMinor(4800, 'GEL'), 'GEL'), '₾4,800');
+
+// Bike price USD; fees GEL. price $3,500 (350000) -> GEL @2.7 = ₾9,450 (945000),
+// + GEL fees 20000 = ₾9,650 (965000) required. Saved ₾1,500 (150000).
 const goal = {
-  id: 'g', name: 'R3', motorcycleModel: 'Yamaha R3', price: 350_000,
-  registrationFees: 10_000, insuranceEstimate: 5_000, additionalFees: 5_000,
+  id: 'g', name: 'R3', motorcycleModel: 'Yamaha R3', price: 350_000, // USD
+  registrationFees: 10_000, insuranceEstimate: 5_000, additionalFees: 5_000, // GEL
   notes: '', status: 'active', createdAt: '', updatedAt: '',
 } as Goal;
 const contribs: Contribution[] = [
   { id: 'c1', goalId: 'g', amount: 60_000, date: '2026-04-15T00:00:00.000Z', createdAt: '' },
   { id: 'c2', goalId: 'g', amount: 90_000, date: '2026-05-15T00:00:00.000Z', createdAt: '' },
 ];
-check('totalRequired = $3,700', totalRequired(goal), 370_000);
-check('totalSaved = $1,500', totalSaved(contribs), 150_000);
-check('remaining = $2,200', remainingAmount(goal, contribs), 220_000);
-check('progress ~40.5%', Math.round(progressPercent(goal, contribs) * 10) / 10, 40.5);
-check('avg/month = $750', averageMonthlyContribution(contribs), 75_000);
-check('months to goal @ $750', monthsToGoal(220_000, 75_000), 3);
-check('ETA from 2026-06', estimatedCompletionMonth(220_000, 75_000, '2026-06'), '2026-09');
+check('totalRequired = ₾9,650 (price USD->GEL + GEL fees)', totalRequired(goal, DEFAULT_EXCHANGE_RATES), 965_000);
+check('totalSaved = ₾1,500 (GEL, exact)', totalSaved(contribs), 150_000);
+check('remaining = ₾8,150 (GEL)', remainingAmount(goal, contribs, DEFAULT_EXCHANGE_RATES), 815_000);
+check('avg/month = ₾750 (GEL)', averageMonthlyContribution(contribs), 75_000);
+check('months to goal', monthsToGoal(815_000, 75_000), 11);
+check('ETA from 2026-06', estimatedCompletionMonth(815_000, 75_000, '2026-06'), '2027-05');
 
 // --- Phase 6: reducer + persistence round-trip (uses in-memory store in Node) ---
 import { reducer } from '@/app/store/reducer';

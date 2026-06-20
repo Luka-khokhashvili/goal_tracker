@@ -103,6 +103,9 @@ export function reducer(state: PersistedState, action: Action): PersistedState {
     case 'UPDATE_EXCHANGE_RATES':
       return { ...state, exchangeRates: action.rates };
 
+    case 'SET_USD_HOLDINGS':
+      return { ...state, usdHoldings: action.amount };
+
     case 'SET_DISPLAY_CURRENCY':
       return { ...state, settings: { ...state.settings, displayCurrency: action.currency } };
 

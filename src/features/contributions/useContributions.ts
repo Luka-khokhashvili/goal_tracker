@@ -3,8 +3,8 @@ import { useStore } from '@/app/store/StoreContext';
 import type { Contribution, ContributionDraft } from './schema';
 
 /**
- * Contributions for the active goal. Drafts carry money in BASE_CURRENCY minor
- * units (USD); the form converts from the display currency before calling this.
+ * Contributions for the active goal. Drafts carry money in CONTRIBUTION_CURRENCY
+ * minor units (GEL), stored exactly as entered — no conversion.
  */
 export function useContributions() {
   const { state, dispatch } = useStore();

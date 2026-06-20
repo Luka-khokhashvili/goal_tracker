@@ -1,10 +1,12 @@
 import { useStore } from '@/app/store/StoreContext';
-import { BASE_CURRENCY, type Currency } from '@/constants/currency';
+import type { Currency } from '@/constants/currency';
 import { convert, formatMoney } from '@/utils/money';
 
 /**
  * Money formatting bound to the current display currency and saved rates.
- * Components format amounts through here so the USD/GEL toggle is automatic.
+ * Each amount carries its own native currency (`from`); this converts it to the
+ * display currency so the USD/GEL toggle is automatic. When `from` already
+ * equals the display currency, the value is shown exactly (no conversion).
  */
 export function useMoney() {
   const { state } = useStore();
@@ -14,17 +16,13 @@ export function useMoney() {
   return {
     displayCurrency,
     rates,
-    /** Format a BASE-currency (USD) amount in the display currency. */
-    format: (baseMinor: number): string =>
-      formatMoney(convert(baseMinor, BASE_CURRENCY, displayCurrency, rates), displayCurrency),
-    /** Format an amount given in `from` currency, shown in the display currency. */
+    /** Format an amount given in its native `from` currency, shown in display currency. */
     formatFrom: (minor: number, from: Currency): string =>
       formatMoney(convert(minor, from, displayCurrency, rates), displayCurrency),
-    /** Format an amount in its own currency, no conversion. */
-    formatRaw: (minor: number, currency: Currency): string =>
-      formatMoney(minor, currency),
-    /** Convert a BASE (USD) amount to the display currency as a number. */
-    toDisplay: (baseMinor: number): number =>
-      convert(baseMinor, BASE_CURRENCY, displayCurrency, rates),
+    /** Format an amount in a fixed currency, no conversion (e.g. always-USD figures). */
+    formatRaw: (minor: number, currency: Currency): string => formatMoney(minor, currency),
+    /** Convert an amount from its native currency to the display currency (number). */
+    toDisplay: (minor: number, from: Currency): number =>
+      convert(minor, from, displayCurrency, rates),
   };
 }

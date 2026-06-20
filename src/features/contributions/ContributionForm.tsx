@@ -2,9 +2,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Field, Input, MoneyInput } from '@/components/ui';
-import { BASE_CURRENCY, CURRENCIES } from '@/constants/currency';
-import { convert, toMajor, toMinor } from '@/utils/money';
-import { useMoney } from '@/hooks/useMoney';
+import { CONTRIBUTION_CURRENCY, CURRENCIES } from '@/constants/currency';
+import { toMajor, toMinor } from '@/utils/money';
 import type { Contribution, ContributionDraft } from './schema';
 
 const formSchema = z.object({
@@ -28,8 +27,8 @@ export function ContributionForm({
   onSubmit: (draft: ContributionDraft) => void;
   onCancel?: () => void;
 }) {
-  const { displayCurrency, rates } = useMoney();
-  const symbol = CURRENCIES[displayCurrency].symbol;
+  // Contributions are entered and stored in GEL exactly — no conversion.
+  const symbol = CURRENCIES[CONTRIBUTION_CURRENCY].symbol; // ₾
 
   const {
     register,
@@ -38,9 +37,7 @@ export function ContributionForm({
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      amount: contribution
-        ? toMajor(convert(contribution.amount, BASE_CURRENCY, displayCurrency, rates), displayCurrency)
-        : 0,
+      amount: contribution ? toMajor(contribution.amount, CONTRIBUTION_CURRENCY) : 0,
       date: contribution ? isoToDateInput(contribution.date) : isoToDateInput(new Date().toISOString()),
       note: contribution?.note ?? '',
     },
@@ -48,7 +45,7 @@ export function ContributionForm({
 
   const submit = handleSubmit((v) => {
     const draft: ContributionDraft = {
-      amount: convert(toMinor(v.amount, displayCurrency), displayCurrency, BASE_CURRENCY, rates),
+      amount: toMinor(v.amount, CONTRIBUTION_CURRENCY),
       // Anchor at local noon so the calendar day never shifts across timezones.
       date: new Date(`${v.date}T12:00:00`).toISOString(),
       ...(v.note.trim() ? { note: v.note.trim() } : {}),
@@ -59,7 +56,7 @@ export function ContributionForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
-        <Field label={`Amount (${displayCurrency})`} error={errors.amount?.message}>
+        <Field label={`Amount (${CONTRIBUTION_CURRENCY})`} error={errors.amount?.message}>
           <MoneyInput symbol={symbol} {...register('amount')} />
         </Field>
         <Field label="Date" error={errors.date?.message}>

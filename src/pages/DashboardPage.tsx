@@ -28,7 +28,6 @@ import {
 } from "@/components/charts";
 import { useHoldings } from "@/features/holdings/useHoldings";
 import { HoldingsForm } from "@/features/holdings/HoldingsForm";
-import { CONTRIBUTION_CURRENCY, TARGET_CURRENCY } from "@/constants/currency";
 import {
   contributionsByMonth,
   progressPercent,
@@ -95,7 +94,7 @@ function ActiveDashboard() {
   const { rule, updateRule, targetForMonth } = useTargets();
   const { rates, updateRates } = useExchange();
   const { usdHoldings, setUsdHoldings } = useHoldings();
-  const { formatFrom, formatRaw } = useMoney();
+  const { formatRaw } = useMoney();
   const charts = useGoalCharts();
 
   const [editGoal, setEditGoal] = useState(false);
@@ -138,8 +137,7 @@ function ActiveDashboard() {
         />
         <div className="flex items-end justify-between">
           <p className="text-sm text-muted">
-            {formatFrom(saved, CONTRIBUTION_CURRENCY)} of{" "}
-            {formatFrom(required, CONTRIBUTION_CURRENCY)}
+            {formatRaw(saved, "GEL")} of {formatRaw(required, "GEL")}
           </p>
           <p className="text-sm font-semibold text-content">
             {Math.round(percent)}%
@@ -150,24 +148,15 @@ function ActiveDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat
-          label="Total required"
-          value={formatFrom(required, CONTRIBUTION_CURRENCY)}
-        />
-        <Stat
-          label="Saved so far"
-          value={formatFrom(saved, CONTRIBUTION_CURRENCY)}
-        />
-        <Stat
-          label="Remaining"
-          value={formatFrom(remaining, CONTRIBUTION_CURRENCY)}
-        />
+        <Stat label="Total required" value={formatRaw(required, "GEL")} />
+        <Stat label="Saved so far" value={formatRaw(saved, "GEL")} />
+        <Stat label="Remaining" value={formatRaw(remaining, "GEL")} />
         <Stat
           label={`This month (${formatMonthKey(month)})`}
-          value={formatFrom(targetGel, TARGET_CURRENCY)}
+          value={formatRaw(targetGel, "GEL")}
           hint={
             <span className="flex items-center gap-1.5">
-              {formatFrom(savedThisMonth, CONTRIBUTION_CURRENCY)} saved
+              {formatRaw(savedThisMonth, "GEL")} saved
               <Badge tone={goalReached ? "success" : "neutral"}>
                 {goalReached ? "Goal reached" : "In progress"}
               </Badge>
@@ -266,14 +255,14 @@ function ActiveDashboard() {
               <div className="flex justify-between">
                 <dt className="text-muted">Normal month</dt>
                 <dd className="text-content">
-                  {formatFrom(rule.baseAmount, TARGET_CURRENCY)}
+                  {formatRaw(rule.baseAmount, "GEL")}
                   <span className="ml-1 text-muted">/ mo</span>
                 </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted">Reserve-pay month (every 6th)</dt>
                 <dd className="text-content">
-                  {formatFrom(rule.boostAmount, TARGET_CURRENCY)}
+                  {formatRaw(rule.boostAmount, "GEL")}
                 </dd>
               </div>
             </dl>

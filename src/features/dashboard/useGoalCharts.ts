@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useStore } from '@/app/store/StoreContext';
 import { useGoals } from '@/features/goals/useGoals';
 import { useContributions } from '@/features/contributions/useContributions';
-import { CONTRIBUTION_CURRENCY, CURRENCIES } from '@/constants/currency';
-import { convert, toMajor } from '@/utils/money';
+import { CURRENCIES } from '@/constants/currency';
+import { toMajor } from '@/utils/money';
 import { formatMonthKey } from '@/utils/date';
 import {
   averageMonthlyContribution,
@@ -18,25 +18,24 @@ import {
 
 export interface ChartPoint {
   label: string; // "Jun 2026"
-  value: number; // display-currency MAJOR units
+  value: number; // GEL MAJOR units
 }
 
 /**
- * Prepares the three chart datasets, all converted into the display currency so
- * the axes and tooltips read consistently regardless of each amount's native
- * currency (goal=USD, contributions=GEL).
+ * Prepares the three chart datasets. Everything is shown in GEL — the savings
+ * currency — exactly (the bike price is converted USD->GEL once inside
+ * totalRequired, with the saved exchange rate). No display-currency round-trip,
+ * so values never drift.
  */
 export function useGoalCharts() {
   const { state } = useStore();
   const { activeGoal } = useGoals();
   const { contributions } = useContributions();
-  const display = state.settings.displayCurrency;
   const rates = state.exchangeRates;
-  const symbol = CURRENCIES[display].symbol;
+  const symbol = CURRENCIES.GEL.symbol;
 
   return useMemo(() => {
-    const gel = (minor: number) =>
-      toMajor(convert(minor, CONTRIBUTION_CURRENCY, display, rates), display);
+    const gel = (minor: number) => toMajor(minor, 'GEL');
 
     const cumulative: ChartPoint[] = cumulativeSavingsSeries(contributions).map((p) => ({
       label: formatMonthKey(p.month as never),
@@ -48,26 +47,18 @@ export function useGoalCharts() {
       value: gel(p.amount),
     }));
 
-    // Forecast in display currency: start from saved, add avg/month up to target.
-    // totalRequired is in GEL (bike price already converted USD->GEL inside).
-    const targetMinor = activeGoal
-      ? convert(totalRequired(activeGoal, rates), CONTRIBUTION_CURRENCY, display, rates)
-      : 0;
-    const startMinor = convert(totalSaved(contributions), CONTRIBUTION_CURRENCY, display, rates);
-    const rateMinor = convert(
-      averageMonthlyContribution(contributions),
-      CONTRIBUTION_CURRENCY,
-      display,
-      rates,
-    );
+    // Forecast in GEL: start from saved, add avg/month up to the GEL target.
+    const targetMinor = activeGoal ? totalRequired(activeGoal, rates) : 0;
+    const startMinor = totalSaved(contributions);
+    const rateMinor = averageMonthlyContribution(contributions);
     const forecast: ChartPoint[] = forecastToGoal(startMinor, targetMinor, rateMinor).map((p) => ({
       label: formatMonthKey(p.month as never),
-      value: toMajor(p.amount, display),
+      value: gel(p.amount),
     }));
 
-    const targetValue = activeGoal ? gel(totalRequired(activeGoal, rates)) : 0;
+    const targetValue = gel(targetMinor);
 
-    return { cumulative, monthly, forecast, targetValue, symbol, display };
+    return { cumulative, monthly, forecast, targetValue, symbol };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contributions, activeGoal, display, rates.usdToGel, rates.gelToUsd]);
+  }, [contributions, activeGoal, rates.usdToGel, rates.gelToUsd]);
 }

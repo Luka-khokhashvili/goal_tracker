@@ -28,6 +28,8 @@ import {
 } from "@/components/charts";
 import { useHoldings } from "@/features/holdings/useHoldings";
 import { HoldingsForm } from "@/features/holdings/HoldingsForm";
+import { convert } from "@/utils/money";
+import { GOAL_CURRENCY } from "@/constants/currency";
 import {
   contributionsByMonth,
   progressPercent,
@@ -110,7 +112,7 @@ function ActiveDashboard() {
   const goal = activeGoal!;
   const required = totalRequired(goal, rates); // GEL (price USD->GEL + GEL fees)
   const saved = totalSaved(contributions); // GEL (native)
-  const remaining = remainingAmount(goal, contributions, rates); // USD
+  const remaining = remainingAmount(goal, contributions, rates); // GEL
   const percent = progressPercent(goal, contributions, rates);
 
   const month = currentMonthKey();
@@ -118,9 +120,18 @@ function ActiveDashboard() {
   const savedThisMonth = contributionsByMonth(contributions).get(month) ?? 0; // GEL
   const goalReached = savedThisMonth >= targetGel && targetGel > 0;
 
+  // Cost breakdown. The bike is USD-native (shown in $ with a ₾ subline);
+  // every fee is GEL. The bike's GEL value is one exact conversion.
+  const bikeGel = convert(goal.price, GOAL_CURRENCY, "GEL", rates);
+  const feeRows = [
+    { label: "Registration fees", gel: goal.registrationFees },
+    { label: "Insurance estimate", gel: goal.insuranceEstimate },
+    { label: "Gear, license, preps", gel: goal.additionalFees },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Goal header + progress */}
+      {/* Total required hero — full width, big number */}
       <Card>
         <CardHeader
           title={goal.name}
@@ -135,9 +146,13 @@ function ActiveDashboard() {
             </Button>
           }
         />
-        <div className="flex items-end justify-between">
+        <p className="text-sm font-medium text-muted">Total required</p>
+        <p className="mt-1 text-4xl font-bold tracking-tight text-content sm:text-5xl">
+          {formatRaw(required, "GEL")}
+        </p>
+        <div className="mt-4 flex items-end justify-between">
           <p className="text-sm text-muted">
-            {formatRaw(saved, "GEL")} of {formatRaw(required, "GEL")}
+            {formatRaw(saved, "GEL")} saved · {formatRaw(remaining, "GEL")} to go
           </p>
           <p className="text-sm font-semibold text-content">
             {Math.round(percent)}%
@@ -146,9 +161,8 @@ function ActiveDashboard() {
         <ProgressBar className="mt-2" value={percent} />
       </Card>
 
-      {/* Stat cards */}
+      {/* Secondary stats: saved / remaining / this month / held in USD */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Total required" value={formatRaw(required, "GEL")} />
         <Stat label="Saved so far" value={formatRaw(saved, "GEL")} />
         <Stat label="Remaining" value={formatRaw(remaining, "GEL")} />
         <Stat
@@ -163,22 +177,52 @@ function ActiveDashboard() {
             </span>
           }
         />
+        <Stat
+          label="Held in USD"
+          value={formatRaw(usdHoldings, "USD")}
+          hint={
+            <button
+              className="text-brand hover:underline"
+              onClick={() => setEditHoldings(true)}
+            >
+              Edit
+            </button>
+          }
+        />
       </div>
 
-      {/* Held-in-USD box (manual, informational) */}
-      <Stat
-        className="sm:max-w-xs"
-        label="Held in USD"
-        value={formatRaw(usdHoldings, "USD")}
-        hint={
-          <button
-            className="text-brand hover:underline"
-            onClick={() => setEditHoldings(true)}
-          >
-            Edit how much you hold as dollars
-          </button>
-        }
-      />
+      {/* Cost breakdown */}
+      <Card>
+        <CardHeader
+          title="Cost breakdown"
+          subtitle="What makes up the total required"
+        />
+        <ul className="divide-y divide-border">
+          <li className="flex items-center justify-between py-3">
+            <span className="text-sm text-content">Motorcycle</span>
+            <span className="text-right">
+              <span className="block font-semibold text-content">
+                {formatRaw(goal.price, "USD")}
+              </span>
+              <span className="block text-xs text-muted">
+                ≈ {formatRaw(bikeGel, "GEL")}
+              </span>
+            </span>
+          </li>
+          {feeRows.map((row) => (
+            <li key={row.label} className="flex items-center justify-between py-3">
+              <span className="text-sm text-content">{row.label}</span>
+              <span className="font-medium text-content">
+                {formatRaw(row.gel, "GEL")}
+              </span>
+            </li>
+          ))}
+          <li className="flex items-center justify-between pt-3">
+            <span className="text-sm font-semibold text-content">Total required</span>
+            <span className="font-semibold text-brand">{formatRaw(required, "GEL")}</span>
+          </li>
+        </ul>
+      </Card>
 
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
